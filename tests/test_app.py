@@ -1,5 +1,6 @@
 import os
 import unittest
+from types import SimpleNamespace
 
 os.environ["DEMO_MODE"] = "1"
 
@@ -45,6 +46,21 @@ class PortsAppTest(unittest.TestCase):
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
         self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
         self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_ipv4_and_ipv6_wildcard_bindings_are_not_duplicated(self):
+        container = SimpleNamespace(attrs={
+            "Config": {"Labels": {}},
+            "NetworkSettings": {"Ports": {
+                "3000/tcp": [
+                    {"HostIp": "0.0.0.0", "HostPort": "9002"},
+                    {"HostIp": "::", "HostPort": "9002"},
+                ],
+            }},
+        })
+        ports = app.published_ports(container, "dockerbox.local")
+        self.assertEqual(len(ports), 1)
+        self.assertEqual(ports[0]["host_ip"], "0.0.0.0")
+        self.assertEqual(ports[0]["href"], "http://dockerbox.local:9002/")
 
 
 if __name__ == "__main__":

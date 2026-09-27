@@ -178,7 +178,7 @@ def published_ports(container, link_host: str) -> List[Dict[str, Any]]:
     attrs = container.attrs
     labels = attrs.get("Config", {}).get("Labels") or {}
     mappings = attrs.get("NetworkSettings", {}).get("Ports") or {}
-    result: List[Dict[str, Any]] = []
+    result: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
     for container_binding, bindings in mappings.items():
         if not bindings:
             continue
@@ -196,7 +196,13 @@ def published_ports(container, link_host: str) -> List[Dict[str, Any]]:
             destination = link_host if host_ip in {"0.0.0.0", "::", ""} else host_ip
             scheme = inferred_scheme(host_port, container_port, labels)
             path = inferred_path(host_port, container_port, labels)
-            result.append({
+            # Docker commonly reports one wildcard publication twice: once for
+            # IPv4 (0.0.0.0) and once for IPv6 (::). They lead to the same link
+            # in this UI, so treat that pair as one published service while
+            # retaining genuinely distinct interface-specific bindings.
+            interface_key = "*" if host_ip in {"0.0.0.0", "::", ""} else host_ip
+            key = (interface_key, host_port, container_port, protocol or "tcp")
+            item = {
                 "host_ip": host_ip,
                 "host_port": host_port,
                 "container_port": container_port,
@@ -205,8 +211,10 @@ def published_ports(container, link_host: str) -> List[Dict[str, Any]]:
                 "path": path,
                 "href": f"{scheme}://{format_host(destination)}:{host_port}{path}",
                 "reachable": probe_port(destination, host_port),
-            })
-    return sorted(result, key=lambda item: (item["host_port"], item["container_port"]))
+            }
+            if key not in result or result[key]["host_ip"] == "::":
+                result[key] = item
+    return sorted(result.values(), key=lambda item: (item["host_port"], item["container_port"], item["host_ip"]))
 
 
 def demo_containers(link_host: str) -> List[Dict[str, Any]]:
