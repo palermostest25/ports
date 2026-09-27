@@ -27,27 +27,20 @@ Ports turns a wall of container metadata into a useful network map: see running 
 ```bash
 git clone https://github.com/palermostest25/ports.git
 cd ports
-cp .env.example .env
 docker compose up -d
 ```
 
-Open `http://YOUR-SERVER:5000`.
+Open `http://YOUR-SERVER:1100`.
 
 The Compose stack pulls `ghcr.io/palermostest25/ports:latest` and places the application behind a Docker socket proxy that permits only the read operations it needs. The application itself runs as an unprivileged user with no Linux capabilities and a read-only filesystem.
 
-To use a different dashboard port:
-
-```dotenv
-PORTS_HTTP_PORT=9000
-```
-
-Then run `docker compose up -d` again.
+There is no `.env` file to create or maintain. To change the dashboard port or any optional setting, edit the plainly listed values in `compose.yaml`, then run `docker compose up -d` again.
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `PORTS_HTTP_PORT` | `5000` | Port used to expose the dashboard (Compose only) |
+| Published port | `1100` | Change the left side of `1100:5000` in `compose.yaml` |
 | `LINK_HOST` | request hostname | Override the hostname used in clickable service links |
 | `PORT_RANGES` | `1000-1999,...,10000-65535` | Comma-separated ranges shown in Available |
 | `RESERVED_PORTS` | empty | Single ports/ranges excluded from available results |
@@ -80,7 +73,7 @@ services:
   ports:
     image: ghcr.io/palermostest25/ports:latest
     ports:
-      - "5000:5000"
+      - "1100:5000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
