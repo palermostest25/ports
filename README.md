@@ -20,7 +20,7 @@ Ports turns a wall of container metadata into a useful network map: see running 
 - Friendly Docker-offline state
 - No JavaScript, font, or CSS CDNs
 - Multi-architecture image for `linux/amd64` and `linux/arm64`
-- Read-only Docker socket proxy in the included Compose stack
+- Straightforward direct Docker socket connection
 
 ## Run it
 
@@ -32,7 +32,7 @@ docker compose up -d
 
 Open `http://YOUR-SERVER:1100`.
 
-The Compose stack pulls `ghcr.io/palermostest25/ports:latest` and places the application behind a Docker socket proxy that permits only the read operations it needs. The application itself runs as an unprivileged user with no Linux capabilities and a read-only filesystem.
+The Compose stack pulls `ghcr.io/palermostest25/ports:latest` and connects directly to the host Docker socket. The filesystem remains read-only and all Linux capabilities are dropped. Compose runs the process as root so it can open the root-owned Docker socket on standard Linux hosts.
 
 There is no `.env` file to create or maintain. To change the dashboard port or any optional setting, edit the plainly listed values in `compose.yaml`, then run `docker compose up -d` again.
 
@@ -64,19 +64,9 @@ services:
 
 Labels can use either the published host port or the internal container port.
 
-## Direct Docker socket setup
+## Docker socket security
 
-The included proxy is the safer default. If you already operate a socket proxy, set `DOCKER_HOST` to its TCP endpoint. A direct socket mount also works, but grants the container broad Docker access even when mounted read-only:
-
-```yaml
-services:
-  ports:
-    image: ghcr.io/palermostest25/ports:latest
-    ports:
-      - "1100:5000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-```
+Direct Docker socket access is simple and reliable, but it effectively grants the container control of the Docker host. The `:ro` bind option prevents replacing the socket file; it does not make Docker API requests read-only. Ports itself only calls Docker's read endpoints. Do not expose the dashboard directly to the public internet.
 
 ## Development
 
